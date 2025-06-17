@@ -1,4 +1,4 @@
-﻿namespace Bakery_GC.Models.Local
+﻿namespace Bakery_GC.Models.Local.Orders
 {
     public enum OrderStatus
     {

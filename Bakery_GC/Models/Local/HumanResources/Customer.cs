@@ -1,10 +1,10 @@
 ﻿using System.Net;
 using System.Reflection.Emit;
 
-namespace Bakery_GC.Models.Local
+namespace Bakery_GC.Models.Local.HumanResources
 {
     public class Customer : Person
     {
-        public Market Market{ get; set; }
+        public Market Market { get; set; }
     }
 }

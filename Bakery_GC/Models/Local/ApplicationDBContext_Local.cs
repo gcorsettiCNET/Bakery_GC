@@ -1,4 +1,7 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Bakery_GC.Models.Local.HumanResources;
+using Bakery_GC.Models.Local.ObjectToSell;
+using Bakery_GC.Models.Local.Orders;
+using Microsoft.EntityFrameworkCore;
 
 namespace Bakery_GC.Models.Local
 {
@@ -12,22 +15,21 @@ namespace Bakery_GC.Models.Local
             : base(options)
         {
         }
-
+        // Orders
         public DbSet<Order> Orders { get; set; }
         public DbSet<OrderItem> OrderItems { get; set; }
-        public DbSet<Cake> Cakes { get; set; }
+        public DbSet<Delivery> Deliveries { get; set; }
+        // HumanResources
         public DbSet<Market> Markets { get; set; }
         public DbSet<Customer> Customers { get; set; }
         public DbSet<Product> Products { get; set; }
-        public DbSet<Delivery> Deliveries { get; set; }
+        // ObjectToSell
         public DbSet<Bread> Breads{ get; set; }
-        public DbSet<Pastry> Pastries { get; set; }
-        public DbSet<PastryType> PastryTypes { get; set; }
-        public DbSet<CakeType> CakeTypes { get; set; }
-        public DbSet<BreadType> BreadTypes { get; set; }
+        public DbSet<Cake> Cakes { get; set; }
+        public DbSet<Pastrie> Pastries { get; set; }
+        public DbSet<Pizza> Pizzas { get; set; }
 
-
-
+        // Orders
 
     }
 }

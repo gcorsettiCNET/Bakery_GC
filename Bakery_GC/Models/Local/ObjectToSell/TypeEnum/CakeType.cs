@@ -1,4 +1,4 @@
-﻿namespace Bakery_GC
+﻿namespace Bakery_GC.Models.Local.ObjectToSell.TypeEnum
 {
     public enum CakeType
     {

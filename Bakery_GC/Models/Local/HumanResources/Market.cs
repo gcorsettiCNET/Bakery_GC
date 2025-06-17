@@ -1,4 +1,6 @@
-﻿namespace Bakery_GC.Models.Local
+﻿using Bakery_GC.Models.Local.ObjectToSell;
+
+namespace Bakery_GC.Models.Local.HumanResources
 {
     public class Market
     {
