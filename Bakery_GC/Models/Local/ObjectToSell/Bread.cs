@@ -4,7 +4,6 @@ namespace Bakery_GC.Models.Local.ObjectToSell
 {
     public class Bread : Product
     {
-        public Guid Id { get; set; }
         public TypeOfLeavening Leavening { get; set; }
         public string Name { get; set; }
         public string Description { get; set; }
