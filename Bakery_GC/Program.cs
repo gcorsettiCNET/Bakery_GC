@@ -8,7 +8,7 @@ builder.Services.AddControllersWithViews();
 
 // Configure the application to use a local MSSQL instance
 builder.Services.AddDbContext<ApplicationDBContext_Local>(options =>
-   options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+   options.UseSqlServer(builder.Configuration.GetConnectionString("BakeryContext")));
 
 var app = builder.Build();
 

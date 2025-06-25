@@ -10,4 +10,12 @@ namespace Bakery_GC.Models.Local.ObjectToSell
         public decimal Price { get; set; }
         public string ImageUrl { get; set; }
     }
-}
+    public  IsTypeOf ;
+
+        public  MyProperty
+        {
+            get { return IsTypeOf ; }
+            set { IsTypeOf  = value; }
+        }
+
+    }

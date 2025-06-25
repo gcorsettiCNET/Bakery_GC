@@ -49,7 +49,7 @@ namespace Bakery_GC.Models.Local
                 .HasOne(oi => oi.Product)
                 .WithMany()
                 .HasForeignKey("ProductId")
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<OrderItem>()
                 .HasOne(oi => oi.Order)
                 .WithMany(o => o.OrderItems)
@@ -88,12 +88,6 @@ namespace Bakery_GC.Models.Local
                 .HasValue<Cake>(ProductType.Cake)
                 .HasValue<Pastrie>(ProductType.Pastrie)
                 .HasValue<Pizza>(ProductType.Pizza);
-            // Specific Products
-            //Bread, Cake, Pastrie, Pizza
-            modelBuilder.Entity<Bread>().HasKey(b => b.Id);
-            modelBuilder.Entity<Cake>().HasKey(c => c.Id);
-            modelBuilder.Entity<Pastrie>().HasKey(p => p.Id);
-            modelBuilder.Entity<Pizza>().HasKey(p => p.Id);
         }
     }
 }
