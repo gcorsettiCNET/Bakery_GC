@@ -68,10 +68,19 @@ namespace HL7Analyzer.Models
     public record Error(ErrorType Type, string Description, string Status)
     {
         public static Error UnexpectedError = new(ErrorType.Error, "Unexpected error occurred", nameof(UnexpectedError));
+        public static Error ArgumentNull = new(ErrorType.Error, "An argument was null", nameof(ArgumentNull));
+        public static Error PathTooLong = new(ErrorType.Error, "The path is too long", nameof(PathTooLong));
+        public static Error DirectoryNotFound = new(ErrorType.Error, "The directory was not found", nameof(DirectoryNotFound));
+        public static Error UnauthorizedAccess = new(ErrorType.Error, "You do not have permission to access this resource", nameof(UnauthorizedAccess));
+        public static Error ArgumentOutOfRange = new(ErrorType.Error, "An argument was out of range", nameof(ArgumentOutOfRange));
+        public static Error IO = new(ErrorType.Error, "An I/O error occurred", nameof(IO));
+        public static Error NotSupported = new(ErrorType.Error, "The operation is not supported", nameof(NotSupported));
+        public static Error SecurityViolation = new(ErrorType.Error, "A security violation occurred", nameof(SecurityViolation));
         public static Error DuplicatedEntry = new(ErrorType.Error, "The record you are trying to insert is already present", nameof(DuplicatedEntry));
         public static Error ArgumentError = new(ErrorType.Error, "An argument error occurred", nameof(ArgumentError));
         public static Error NotFound = new(ErrorType.Error, "The item you are trying to find has not been found", nameof(NotFound));
         public static Error InvalidPaging = new(ErrorType.Error, "The paging options provided are not valid", nameof(InvalidPaging));
+        public static Error InvalidInput = new(ErrorType.Error, "The input provided is not valid", nameof(InvalidInput));
 
         public static Error FromException(Exception exception)
         {

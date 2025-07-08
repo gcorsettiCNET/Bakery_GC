@@ -5,6 +5,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.  
 builder.Services.AddControllersWithViews();
+builder.Services.AddRazorPages();
 
 // Configure the application to use a local MSSQL instance
 builder.Services.AddDbContext<ApplicationDBContext_Local>(options =>
@@ -19,7 +20,6 @@ if (!app.Environment.IsDevelopment())
     // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.  
     app.UseHsts();
 }
-
 app.UseHttpsRedirection();
 app.UseRouting();
 
@@ -31,5 +31,8 @@ app.MapControllerRoute(
   name: "default",
   pattern: "{controller=Home}/{action=Index}/{id?}")
   .WithStaticAssets();
+
+// Mappa le Razor Pages
+app.MapRazorPages();
 
 app.Run();
