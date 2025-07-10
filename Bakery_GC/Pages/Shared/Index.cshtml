@@ -1,7 +1,16 @@
-﻿@page "/Index"
-@model Bakery_GC.Pages.HomePageModel
-@{
-    Layout = "_Layout";
-}
-<h1>Welcome to the GC Bakery</h1>
-
+﻿@page "/Index"  
+@model Bakery_GC.Pages.HomePageModel  
+@{  
+   Layout = "_Layout";  
+}  
+<div class="container col-12" style="background-color: #FFE5B4;">  
+   <h1 class="text-center text-orange">Welcome to the GC Bakery</h1>  
+   <p class="text-center">Explore our delicious products and enjoy a seamless shopping experience.</p>  
+   <p class="text-center">Check out our latest offerings and special deals!</p>  
+   <p class="text-center">  
+       Visit the <a asp-page="/Products" class="btn btn-link text-white">Products</a> page to start shopping.  
+   </p>  
+   <p class="text-center">  
+       Need help? Visit our <a asp-page="/AboutMe" class="btn btn-link text-white">About Me</a> page to learn more about us.  
+   </p>  
+</div>
