@@ -2,6 +2,7 @@ using Bakery.Core.Interfaces;
 using Bakery.Core.Interfaces.Repositories;
 using Bakery.Core.Entities.People;
 using Bakery.Core.Entities.Products;
+using Bakery.Infrastructure.Configuration;
 using Bakery.Infrastructure.Data;
 using Bakery.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
@@ -22,29 +23,17 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
         // ======= DATABASE CONFIGURATION =======
+        var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Development";
+        var connectionString = configuration.GetConnectionString("BakeryContext");
+        var dbConfig = DatabaseConfiguration.FromEnvironment(environment, connectionString);
+        
+        // Registra la configurazione per DI
+        services.AddSingleton(dbConfig);
+        
+        // Configura DbContext based on provider
         services.AddDbContext<BakeryDbContext>(options =>
         {
-            // Use InMemory database for testing purposes
-            if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development")
-            {
-                options.UseInMemoryDatabase("BakeryTestDb");
-                options.EnableSensitiveDataLogging();
-                options.EnableDetailedErrors();
-            }
-            else
-            {
-                options.UseSqlServer(
-                    configuration.GetConnectionString("BakeryContext"),
-                    sqlOptions =>
-                    {
-                        sqlOptions.EnableRetryOnFailure(
-                            maxRetryCount: 3,
-                            maxRetryDelay: TimeSpan.FromSeconds(5),
-                            errorNumbersToAdd: null);
-                        
-                        sqlOptions.CommandTimeout(30);
-                    });
-            }
+            ConfigureDatabase(options, dbConfig);
         });
 
         // ======= REPOSITORY REGISTRATION =======
@@ -66,30 +55,38 @@ public static class ServiceCollectionExtensions
     }
 
     /// <summary>
-    /// Configura il database con migrazioni automatiche in Development
+    /// Configura il database con migrazioni automatiche e seeding basato su configurazione
     /// </summary>
     public static async Task<IServiceProvider> InitializeDatabaseAsync(this IServiceProvider services)
     {
         using var scope = services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<BakeryDbContext>();
+        var dbConfig = scope.ServiceProvider.GetRequiredService<DatabaseConfiguration>();
         var logger = scope.ServiceProvider.GetRequiredService<ILogger<BakeryDbContext>>();
         
         try
         {
-            // Ensure database is created (for InMemory or real databases)
-            await context.Database.EnsureCreatedAsync();
-            
-            // Apply migrations only for real databases, not InMemory
-            if (!context.Database.IsInMemory())
+            // Apply migrations if configured
+            if (dbConfig.AutoMigrateOnStartup && context.Database.IsRelational())
             {
+                logger.LogInformation("🔄 Applying database migrations...");
                 await context.Database.MigrateAsync();
+                logger.LogInformation("✅ Database migrations applied successfully");
             }
-            
-            // Seed data in development
-            if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development")
+            else
             {
-                await SeedDataAsync(context);
-                logger.LogInformation("✅ Database seeded successfully with test data");
+                // Ensure database is created for non-relational (InMemory)
+                await context.Database.EnsureCreatedAsync();
+                logger.LogInformation("📊 Database ensured created");
+            }
+
+            // Seed data if configured
+            if (dbConfig.SeedDataOnStartup)
+            {
+                logger.LogInformation("🌱 Starting data seeding...");
+                var seedProvider = new Seed.BakerySeedDataProvider(context, 
+                    scope.ServiceProvider.GetRequiredService<ILogger<Seed.BakerySeedDataProvider>>());
+                await seedProvider.SeedAllDataAsync();
             }
         }
         catch (Exception ex)
@@ -101,185 +98,48 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
+
+
     /// <summary>
-    /// Seed data per testing
+    /// Configura il database provider basato sulla configurazione
     /// </summary>
-    private static async Task SeedDataAsync(BakeryDbContext context)
+    private static void ConfigureDatabase(DbContextOptionsBuilder options, DatabaseConfiguration dbConfig)
     {
-        // Check se già esistono dati
-        if (await context.Markets.AnyAsync())
+        switch (dbConfig.Provider)
         {
-            return; // Database già popolato
+            case DatabaseProvider.InMemory:
+                options.UseInMemoryDatabase(dbConfig.ConnectionString);
+                break;
+                
+            case DatabaseProvider.SqlServer:
+                options.UseSqlServer(dbConfig.ConnectionString, sqlOptions =>
+                {
+                    sqlOptions.EnableRetryOnFailure(
+                        maxRetryCount: 3,
+                        maxRetryDelay: TimeSpan.FromSeconds(5),
+                        errorNumbersToAdd: null);
+                    
+                    sqlOptions.CommandTimeout(30);
+                    sqlOptions.MigrationsAssembly("Bakery.Infrastructure");
+                });
+                break;
+                
+            case DatabaseProvider.Sqlite:
+                options.UseSqlite(dbConfig.ConnectionString, sqliteOptions =>
+                {
+                    sqliteOptions.MigrationsAssembly("Bakery.Infrastructure");
+                });
+                break;
+                
+            default:
+                throw new ArgumentException($"Unsupported database provider: {dbConfig.Provider}");
         }
 
-        // Seed Markets
-        var markets = new[]
-        {
-            new Market 
-            { 
-                Id = Guid.NewGuid(),
-                Name = "Bakery Central Milano",
-                Address = "Via Roma 123",
-                City = "Milano",
-                State = "Lombardia",
-                ZipCode = "20121",
-                PhoneNumber = "+39 02 1234567",
-                Email = "milano@bakery.com",
-                OpeningTime = new TimeSpan(7, 0, 0),
-                ClosingTime = new TimeSpan(20, 0, 0),
-                IsOpen = true,
-                CreatedAt = DateTime.UtcNow
-            },
-            new Market 
-            { 
-                Id = Guid.NewGuid(),
-                Name = "Bakery Roma Centro",
-                Address = "Via del Corso 456",
-                City = "Roma",
-                State = "Lazio",
-                ZipCode = "00187",
-                PhoneNumber = "+39 06 7654321",
-                Email = "roma@bakery.com",
-                OpeningTime = new TimeSpan(6, 30, 0),
-                ClosingTime = new TimeSpan(21, 0, 0),
-                IsOpen = true,
-                CreatedAt = DateTime.UtcNow
-            }
-        };
-
-        await context.Markets.AddRangeAsync(markets);
-        await context.SaveChangesAsync();
-
-        var milanoMarket = markets[0];
-        var romaMarket = markets[1];
-
-        // Seed Products
-        var products = new Product[]
-        {
-            // Pizze
-            new Pizza 
-            { 
-                Id = Guid.NewGuid(),
-                Name = "Pizza Margherita",
-                Description = "Pizza classica con pomodoro, mozzarella e basilico",
-                Price = 8.50m,
-                IsAvailable = true,
-                ImageUrl = "/images/pizza-margherita.jpg",
-                MarketId = milanoMarket.Id,
-                Ingredients = "Pomodoro, Mozzarella, Basilico",
-                Size = "Medium",
-                IsSpicy = false,
-                CreatedAt = DateTime.UtcNow
-            },
-            new Pizza 
-            { 
-                Id = Guid.NewGuid(),
-                Name = "Pizza Diavola",
-                Description = "Pizza piccante con salame piccante",
-                Price = 10.00m,
-                IsAvailable = true,
-                ImageUrl = "/images/pizza-diavola.jpg",
-                MarketId = romaMarket.Id,
-                Ingredients = "Pomodoro, Mozzarella, Salame Piccante",
-                Size = "Large",
-                IsSpicy = true,
-                CreatedAt = DateTime.UtcNow
-            },
-
-            // Pane
-            new Bread 
-            { 
-                Id = Guid.NewGuid(),
-                Name = "Pane Integrale",
-                Description = "Pane integrale fresco fatto in casa",
-                Price = 3.50m,
-                IsAvailable = true,
-                ImageUrl = "/images/pane-integrale.jpg",
-                MarketId = milanoMarket.Id,
-                BreadType = "Integrale",
-                IsGlutenFree = false,
-                ShelfLifeDays = 3,
-                CreatedAt = DateTime.UtcNow
-            },
-
-            // Torte
-            new Cake 
-            { 
-                Id = Guid.NewGuid(),
-                Name = "Torta al Cioccolato",
-                Description = "Deliziosa torta al cioccolato per ogni occasione",
-                Price = 25.00m,
-                IsAvailable = true,
-                ImageUrl = "/images/torta-cioccolato.jpg",
-                MarketId = romaMarket.Id,
-                Flavor = "Cioccolato",
-                Occasion = "Compleanno",
-                IsCustomizable = true,
-                ServingSize = 8,
-                CreatedAt = DateTime.UtcNow
-            },
-
-            // Pasticceria
-            new Pastrie 
-            { 
-                Id = Guid.NewGuid(),
-                Name = "Cornetto alla Crema",
-                Description = "Cornetto fresco ripieno di crema pasticcera",
-                Price = 2.20m,
-                IsAvailable = true,
-                ImageUrl = "/images/cornetto-crema.jpg",
-                MarketId = milanoMarket.Id,
-                PastrieType = "Cornetto",
-                IsFilled = true,
-                Filling = "Crema Pasticcera",
-                IsVegan = false,
-                CreatedAt = DateTime.UtcNow
-            }
-        };
-
-        await context.Products.AddRangeAsync(products);
-        await context.SaveChangesAsync();
-
-        // Seed Customers
-        var customers = new[]
-        {
-            new Customer 
-            { 
-                Id = Guid.NewGuid(),
-                FirstName = "Marco",
-                LastName = "Rossi",
-                Email = "marco.rossi@email.com",
-                PhoneNumber = "+39 333 1234567",
-                Address = "Via Milano 10",
-                City = "Milano",
-                State = "Lombardia",
-                ZipCode = "20121",
-                DateOfBirth = new DateTime(1985, 5, 15),
-                MarketId = milanoMarket.Id,
-                TotalSpent = 150.75m,
-                IsVip = false,
-                CreatedAt = DateTime.UtcNow
-            },
-            new Customer 
-            { 
-                Id = Guid.NewGuid(),
-                FirstName = "Sofia",
-                LastName = "Bianchi",
-                Email = "sofia.bianchi@email.com",
-                PhoneNumber = "+39 333 7654321",
-                Address = "Via Roma 25",
-                City = "Roma",
-                State = "Lazio",
-                ZipCode = "00187",
-                DateOfBirth = new DateTime(1990, 8, 22),
-                MarketId = romaMarket.Id,
-                TotalSpent = 320.50m,
-                IsVip = true,
-                CreatedAt = DateTime.UtcNow
-            }
-        };
-
-        await context.Customers.AddRangeAsync(customers);
-        await context.SaveChangesAsync();
+        // Configurazioni comuni
+        if (dbConfig.EnableSensitiveDataLogging)
+            options.EnableSensitiveDataLogging();
+            
+        if (dbConfig.EnableDetailedErrors)
+            options.EnableDetailedErrors();
     }
 }
