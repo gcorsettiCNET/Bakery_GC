@@ -1,14 +1,15 @@
-﻿using Bakery_GC.Models.Local.HumanResources;
+﻿using Bakery_GC.Models;
+using Bakery_GC.Models.Local.HumanResources;
 using Bakery_GC.Models.Local.ObjectToSell;
 using Bakery_GC.Models.Local.ObjectToSell.TypeEnum;
-using HL7Analyzer.Models;
 
-namespace Bakery_GC.Repositories
+
+namespace Bakery_GC.Repositories.Interfaces
 {
     public interface IProductRepository
     {
         // CRUD operations for Products
-        Task<Result<IEnumerable<Product>>> GetAllProductsAsync(int pageNumber, int pageSize);
+        Task<Result<IEnumerable<Product>>> GetPageProductsAsync(int pageNumber, int pageSize);
         Task<Result<Product>> GetProductByIdAsync(Guid id);
         Task<Result> AddProductAsync(Product product);
         Task<Result> UpdateProductAsync(Product product);

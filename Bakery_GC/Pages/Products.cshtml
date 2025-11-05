@@ -1,4 +1,179 @@
 ﻿@page
-@model Bakery_GC.Pages.Products
+@model Bakery_GC.Pages.ProductsModel
+@using Bakery_GC.Models.Local.ObjectToSell.TypeEnum
 @{
+    ViewData["Title"] = "Products";
+}
+
+<h1 class="mb-4">Products</h1>
+
+<form method="get" class="border rounded p-3 mb-4 bg-light">
+    <div class="row g-3">
+        <div class="col-md-2">
+            <label class="form-label">Product Type</label>
+            <select class="form-select" name="Filter.ProductType" onchange="this.form.submit()">
+                <option value="">-- All --</option>
+                @foreach (var t in Enum.GetValues<ProductType>())
+                {
+                    if (t == ProductType.Product) { continue; } <!-- ignora la base -->
+                    <option value="@t" selected="@(Model.Filter.ProductType == t)">@t</option>
+                }
+            </select>
+        </div>
+
+        @* Sotto-tipi dinamici *@
+        @if (Model.Filter.ProductType == ProductType.Bread)
+        {
+            <div class="col-md-2">
+                <label class="form-label">Bread Type</label>
+                <select class="form-select" name="Filter.BreadType">
+                    <option value="">-- Any --</option>
+                    @foreach (var bt in Enum.GetValues<BreadType>())
+                    {
+                        <option value="@bt" selected="@(Model.Filter.BreadType == bt)">@bt</option>
+                    }
+                </select>
+            </div>
+        }
+        else if (Model.Filter.ProductType == ProductType.Cake)
+        {
+            <div class="col-md-2">
+                <label class="form-label">Cake Type</label>
+                <select class="form-select" name="Filter.CakeType">
+                    <option value="">-- Any --</option>
+                    @foreach (var ct in Enum.GetValues<CakeType>())
+                    {
+                        <option value="@ct" selected="@(Model.Filter.CakeType == ct)">@ct</option>
+                    }
+                </select>
+            </div>
+        }
+        else if (Model.Filter.ProductType == ProductType.Pastrie)
+        {
+            <div class="col-md-2">
+                <label class="form-label">Pastry Type</label>
+                <select class="form-select" name="Filter.PastryType">
+                    <option value="">-- Any --</option>
+                    @foreach (var pt in Enum.GetValues<PastryType>())
+                    {
+                        <option value="@pt" selected="@(Model.Filter.PastryType == pt)">@pt</option>
+                    }
+                </select>
+            </div>
+        }
+        else if (Model.Filter.ProductType == ProductType.Pizza)
+        {
+            <div class="col-md-2">
+                <label class="form-label">Pizza Type</label>
+                <select class="form-select" name="Filter.PizzaType">
+                    <option value="">-- Any --</option>
+                    @foreach (var pzt in Enum.GetValues<PizzaType>())
+                    {
+                        <option value="@pzt" selected="@(Model.Filter.PizzaType == pzt)">@pzt</option>
+                    }
+                </select>
+            </div>
+        }
+
+        <div class="col-md-2">
+            <label class="form-label">Market Id</label>
+            <input type="text" class="form-control" name="Filter.MarketId" value="@(Model.Filter.MarketId?.ToString() ?? "")" />
+        </div>
+
+        <div class="col-md-2">
+            <label class="form-label">Market Name</label>
+            <input type="text" class="form-control" name="Filter.NameMarket" value="@Model.Filter.NameMarket" />
+        </div>
+
+        <div class="col-md-2">
+            <label class="form-label">Min Price</label>
+            <input type="number" step="0.01" class="form-control" name="Filter.MinPrice" value="@(Model.Filter.MinPrice?.ToString() ?? "")" />
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">Max Price</label>
+            <input type="number" step="0.01" class="form-control" name="Filter.MaxPrice" value="@(Model.Filter.MaxPrice?.ToString() ?? "")" />
+        </div>
+
+        <div class="col-md-3">
+            <label class="form-label">Search</label>
+            <input type="text" class="form-control" name="Filter.SearchTerm" value="@Model.Filter.SearchTerm" placeholder="Name or description..." />
+        </div>
+
+        <div class="col-md-2">
+            <label class="form-label">Page Size</label>
+            <select class="form-select" name="PageSize" onchange="this.form.submit()">
+                @foreach (var size in new[] { 6, 12, 24, 48 })
+                {
+                    <option value="@size" selected="@(Model.PageSize == size)">@size</option>
+                }
+            </select>
+        </div>
+
+        <div class="col-md-12 d-flex gap-2 mt-2">
+            <button type="submit" class="btn btn-primary">Apply</button>
+            <a asp-page="./Products" class="btn btn-secondary">Reset</a>
+        </div>
+    </div>
+</form>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        @if (Model.Products.Any())
+        {
+            <span><strong>@Model.Products.Count</strong> product(s) found</span>
+        }
+        else
+        {
+            <span>No products found.</span>
+        }
+    </div>
+    <div>
+        <nav>
+            <ul class="pagination mb-0">
+                <li class="page-item @(Model.PageNumber <= 1 ? "disabled" : "")">
+                    <a class="page-link"
+                       asp-page="./Products"
+                       asp-route-PageNumber="@(Model.PageNumber - 1)"
+                       asp-route-PageSize="@Model.PageSize"
+                       asp-route-Filter.ProductType="@Model.Filter.ProductType"
+                       asp-route-Filter.SearchTerm="@Model.Filter.SearchTerm">Previous</a>
+                </li>
+                <li class="page-item disabled">
+                    <span class="page-link">Page @Model.PageNumber</span>
+                </li>
+                <li class="page-item">
+                    <a class="page-link"
+                       asp-page="./Products"
+                       asp-route-PageNumber="@(Model.PageNumber + 1)"
+                       asp-route-PageSize="@Model.PageSize"
+                       asp-route-Filter.ProductType="@Model.Filter.ProductType"
+                       asp-route-Filter.SearchTerm="@Model.Filter.SearchTerm">Next</a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+</div>
+
+@if (Model.Products.Any())
+{
+    <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-4">
+        @foreach (var p in Model.Products)
+        {
+            <div class="col">
+                <div class="card h-100 shadow-sm">
+                    <img src="@p.ImageUrl" class="card-img-top" alt="@p.Name" />
+                    <div class="card-body">
+                        <h5 class="card-title mb-1">@p.Name</h5>
+                        <span class="badge text-bg-secondary mb-2">@p.ProductType</span>
+                        @if (!string.IsNullOrWhiteSpace(p.Description))
+                        {
+                            <p class="card-text small">@p.Description</p>
+                        }
+                        <p class="fw-semibold mb-1">Price: @p.Price.ToString("C")</p>
+                        <p class="small text-muted mb-0">Market: @p.Market?.Name</p>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
 }

@@ -1,277 +1,276 @@
-﻿using Bakery_GC.Models.Local;
+﻿using Bakery_GC.Models;
+using Bakery_GC.Models.Local;
 using Bakery_GC.Models.Local.HumanResources;
 using Bakery_GC.Models.Local.ObjectToSell;
 using Bakery_GC.Models.Local.ObjectToSell.TypeEnum;
-using HL7Analyzer.Models;
+using Bakery_GC.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
 namespace Bakery_GC.Repositories
 {
     public class ProductRepository : IProductRepository
     {
-        private readonly ApplicationDBContext_Local _dbContext;
-        public ProductRepository( ApplicationDBContext_Local dbContext)
+        private readonly Models.ApplicationDBContext_Local _dbContext;
+
+        public ProductRepository(Models.ApplicationDBContext_Local dbContext)
         {
             _dbContext = dbContext;
         }
-        // CRUD operations for Products ( Non create )
 
-        /// <summary>
-        /// Adds a new product to the repository asynchronously.
-        /// </summary>
-        /// <param name="product">The product to add. <see cref="Product"/> </param>
-        /// <returns>A <see cref="Result"/> indicating success or failure.</returns>
-        /// <exception> <see cref="Error.DuplicatedEntry"/></exception>
         public async Task<Result> AddProductAsync(Product product)
         {
-            await _dbContext.Products.AddAsync(product);
-            if(await _dbContext.SaveChangesAsync() <= 0)
+            if (product is null)
+                return Result.Failure(Error.InvalidInput);
+
+            try
+            {
+                await _dbContext.Products.AddAsync(product);
+                var written = await _dbContext.SaveChangesAsync();
+                if (written <= 0)
+                    return Result.Failure(Error.UnexpectedError);
+                return Result.Success();
+            }
+            catch (DbUpdateException)
             {
                 return Result.Failure(Error.DuplicatedEntry);
             }
-            return Result.Success();
+            catch
+            {
+                return Result.Failure(Error.UnexpectedError);
+            }
         }
-        /// <summary>
-        /// Updates an existing product in the repository asyncronously.
-        /// </summary>
-        /// <param name="product"></param>
-        /// <returns> <see cref="Error.InvalidInput"/> If the product that has been passed to the method is null or the Id is an Empty Guid 
-        /// <see cref="Error.NotFound"/> If the product that has been passed cannot be found in the database
-        /// <see cref="Error.UnexpectedError"/> If the product exist and something went wrong in the update in the database
-        /// <see cref="Result"/> If the product has been updated successfully </returns>
+
         public async Task<Result> UpdateProductAsync(Product product)
         {
-            if (product == null || product.Id == Guid.Empty)
-            {
+            if (product is null || product.Id == Guid.Empty)
                 return Result.Failure(Error.InvalidInput);
-            }
 
-            var productToUpdate = await _dbContext.Products.Where(x => x.Id == product.Id).AsNoTracking().FirstAsync();
-            if (productToUpdate == null)
-            {
+            var exists = await _dbContext.Products
+                .AsNoTracking()
+                .AnyAsync(p => p.Id == product.Id);
+
+            if (!exists)
                 return Result.Failure(Error.NotFound);
-            }
-            else
+
+            _dbContext.Products.Update(product);
+
+            try
             {
-                _dbContext.Products.Update(product);
-                if (await _dbContext.SaveChangesAsync() <= 0)
-                {
+                var written = await _dbContext.SaveChangesAsync();
+                if (written <= 0)
                     return Result.Failure(Error.UnexpectedError);
-                }
                 return Result.Success();
             }
+            catch (DbUpdateConcurrencyException)
+            {
+                return Result.Failure(Error.UnexpectedError);
+            }
         }
-        /// <summary>
-        /// Deletes a product from the repository asyncronously by its ID.
-        /// </summary>
-        /// <param name="id">The Guid of the Product we want to delete</param>
-        /// <returns>A <see cref="Result"/> containing the Result of the operation </returns>
-        /// <exception cref="Error.NotFound">Thrown if the product does not exist in the database </exception>
+
         public async Task<Result> DeleteProductAsync(Guid id)
         {
-            if (await _dbContext.Products.Where(p => p.Id == id).ExecuteDeleteAsync() <= 0)
-            {
+            if (id == Guid.Empty)
+                return Result.Failure(Error.InvalidInput);
+
+            var affected = await _dbContext
+                .Products
+                .Where(p => p.Id == id)
+                .ExecuteDeleteAsync();
+
+            if (affected == 0)
                 return Result.Failure(Error.NotFound);
-            }
+
             return Result.Success();
         }
-        /// <summary>
-        /// Retrieves a product by its ID from the repository asynchronously.
-        /// </summary>
-        /// <param name="id">The Guid of the product.</param>
-        /// <returns>A <see cref="Result{Product}"/> containing the product if found, otherwise <see cref="Error.NotFound"/>.</returns>
+
         public async Task<Result<Product>> GetProductByIdAsync(Guid id)
         {
-            if( await _dbContext.Products.FindAsync(id) is Product product )
-            {
+            if (id == Guid.Empty)
+                return Result<Product>.Failure(Error.InvalidInput);
+
+            if (await _dbContext.Products.FindAsync(id) is Product product)
                 return Result<Product>.Success(product);
-            }
+
             return Result<Product>.Failure(Error.NotFound);
         }
-        /// <summary>
-        /// Retrieves all products with optional pagination.
-        /// </summary>
-        /// <param name="pageNumber">The page number (1-based).</param>
-        /// <param name="pageSize">The number of products per page.</param>
-        /// <returns>A <see cref="Result{IEnumerable{Product}}"/> containing the paged products.</returns>
-        /// <exception cref="Error.InvalidPaging">Thrown if pageNumber or pageSize is less than 1.</exception>
-        public async Task<Result<IEnumerable<Product>>> GetAllProductsAsync(int pageNumber, int pageSize)
+
+        public async Task<Result<IEnumerable<Product>>> GetPageProductsAsync(int pageNumber, int pageSize)
         {
             if (pageNumber < 1 || pageSize < 1)
-            {
                 return Result<IEnumerable<Product>>.Failure(Error.InvalidPaging);
-            }
 
             var products = await _dbContext.Products
+                .AsNoTracking()
                 .OrderBy(p => p.Id)
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
+
             return Result<IEnumerable<Product>>.Success(products);
         }
 
-        // Additional methods specific to product management
-
-        /// <summary>
-        /// Retrieves all products available in a specific market.
-        /// </summary>
-        /// <param name="market">The market to filter by.</param>
-        /// <returns>A <see cref="Result{IEnumerable{Product}}"/> containing the products available in the market.</returns>
-        /// <exception cref="Error.NotFound">Returned if the market or products are not found.</exception>
         public async Task<Result<IEnumerable<Product>>> GetProductsByAvailabilityInMarketAsync(Market market)
         {
-            // Controllo che il negozio passato esista
-            if (market == null || !await _dbContext.Markets.AnyAsync(m => m.Id == market.Id))
-            {
-                return Result<IEnumerable<Product>>.Failure(Error.NotFound);
-            }
+            if (market is null || market.Id == Guid.Empty)
+                return Result<IEnumerable<Product>>.Failure(Error.InvalidInput);
 
-            // Recupero i prodotti che sono disponibili nel mercato specificato
-            var products = await _dbContext.Products
-                .Where(x => x.Market.Id == market.Id)
-                .ToListAsync();
-            if ( !products.Any() )
-            {
+            var marketExists = await _dbContext.Markets
+                .AsNoTracking()
+                .AnyAsync(m => m.Id == market.Id);
+
+            if (!marketExists)
                 return Result<IEnumerable<Product>>.Failure(Error.NotFound);
-            }
+
+            var products = await _dbContext.Products
+                .Where(p => p.Market.Id == market.Id)
+                .AsNoTracking()
+                .ToListAsync();
+
+            if (products.Count == 0)
+                return Result<IEnumerable<Product>>.Failure(Error.NotFound);
+
             return Result<IEnumerable<Product>>.Success(products);
         }
-        /// <summary>
-        /// Retrieves products filtered by the specified <see cref="BreadType"/>.
-        /// </summary>
-        /// <param name="type">The bread type to filter by.</param>
-        /// <returns>A <see cref="Result{IEnumerable{Product}}"/> containing the filtered products.</returns>
-        /// <exception cref="Error.NotFound">Returned if no products match the filter.</exception>
+
+        private IQueryable<TDerived> QueryDerived<TDerived>(ProductType typeDiscriminator)
+            where TDerived : Product
+        {
+            return _dbContext.Products
+                .Where(p => p.ProductType == typeDiscriminator)
+                .OfType<TDerived>()
+                .AsNoTracking();
+        }
+
         public async Task<Result<IEnumerable<Product>>> GetProductsByTypeAsync(BreadType type)
         {
-            var products = await _dbContext.Products
-                .Where(p => EF.Property<ProductType>(p, "ProductType") == ProductType.Bread)
-                .OfType<Bread>() // Filtra solo i prodotti di tipo Bread
-                .Where(b => b.BreadType == type) // Filtra ulteriormente per BreadType
+            var list = await QueryDerived<Bread>(ProductType.Bread)
+                .Where(b => b.BreadType == type)
                 .ToListAsync();
 
-            if (products == null || !products.Any())
-            {
+            if (list.Count == 0)
                 return Result<IEnumerable<Product>>.Failure(Error.NotFound);
-            }
-            return Result<IEnumerable<Product>>.Success(products);
+
+            return Result<IEnumerable<Product>>.Success(list);
         }
-        /// <summary>
-        /// Retrieves products filtered by the specified <see cref="CakeType"/>.
-        /// </summary>
-        /// <param name="type">The cake type to filter by.</param>
-        /// <returns>A <see cref="Result{IEnumerable{Product}}"/> containing the filtered products.</returns>
-        /// <exception cref="Error.NotFound">Returned if no products match the filter.</exception>
+
         public async Task<Result<IEnumerable<Product>>> GetProductsByTypeAsync(CakeType type)
         {
-            var products = await _dbContext.Products
-                .Where(p => EF.Property<ProductType>(p, "ProductType") == ProductType.Cake)
-                .OfType<Cake>() // Filtra solo i prodotti di tipo Bread
-                .Where(b => b.CakeType == type) // Filtra ulteriormente per BreadType
+            var list = await QueryDerived<Cake>(ProductType.Cake)
+                .Where(c => c.CakeType == type)
                 .ToListAsync();
 
-            if (products == null || !products.Any())
-            {
+            if (list.Count == 0)
                 return Result<IEnumerable<Product>>.Failure(Error.NotFound);
-            }
-            return Result<IEnumerable<Product>>.Success(products);
+
+            return Result<IEnumerable<Product>>.Success(list);
         }
-        /// <summary>
-        /// Retrieves products filtered by the specified <see cref="PastryType"/>.
-        /// </summary>
-        /// <param name="type">The pastry type to filter by.</param>
-        /// <returns>A <see cref="Result{IEnumerable{Product}}"/> containing the filtered products.</returns>
-        /// <exception cref="Error.NotFound">Returned if no products match the filter.</exception>
-        public async Task<Result<IEnumerable<Product>>> GetProductsByTypeAsync(PastryType type )
+
+        public async Task<Result<IEnumerable<Product>>> GetProductsByTypeAsync(PastryType type)
         {
-            var products = await _dbContext.Products
-                .Where(p => EF.Property<ProductType>(p, "ProductType") == ProductType.Pastrie)
-                .OfType<Pastrie>() // Filtra solo i prodotti di tipo Bread
-                .Where(b => b.PastryType == type) // Filtra ulteriormente per BreadType
+            var list = await QueryDerived<Pastrie>(ProductType.Pastrie)
+                .Where(p => p.PastryType == type)
                 .ToListAsync();
 
-            if (products == null || !products.Any())
-            {
+            if (list.Count == 0)
                 return Result<IEnumerable<Product>>.Failure(Error.NotFound);
-            }
-            return Result<IEnumerable<Product>>.Success(products);
+
+            return Result<IEnumerable<Product>>.Success(list);
         }
-        /// <summary>
-        /// Retrieves products filtered by the specified <see cref="PizzaType"/>.
-        /// </summary>
-        /// <param name="type">The pizza type to filter by.</param>
-        /// <returns>A <see cref="Result{IEnumerable{Product}}"/> containing the filtered products.</returns>
-        /// <exception cref="Error.NotFound">Returned if no products match the filter.</exception>
-        public async Task<Result<IEnumerable<Product>>> GetProductsByTypeAsync(PizzaType type )
+
+        public async Task<Result<IEnumerable<Product>>> GetProductsByTypeAsync(PizzaType type)
         {
-            var products = await _dbContext.Products
-                .Where(p => EF.Property<ProductType>(p, "ProductType") == ProductType.Pizza)
-                .OfType<Pizza>() // Filtra solo i prodotti di tipo Bread
-                .Where(b => b.PizzaType == type) // Filtra ulteriormente per BreadType
+            var list = await QueryDerived<Pizza>(ProductType.Pizza)
+                .Where(p => p.PizzaType == type)
                 .ToListAsync();
 
-            if (products == null || !products.Any())
-            {
+            if (list.Count == 0)
                 return Result<IEnumerable<Product>>.Failure(Error.NotFound);
-            }
-            return Result<IEnumerable<Product>>.Success(products);
+
+            return Result<IEnumerable<Product>>.Success(list);
         }
-        /// <summary>
-        /// Retrieves products filtered by the specified <see cref="ProductType"/>.
-        /// </summary>
-        /// <param name="type">The product type to filter by.</param>
-        /// <returns>A <see cref="Result{IEnumerable{Product}}"/> containing the filtered products.</returns>
+
         public async Task<Result<IEnumerable<Product>>> GetProductsByTypeAsync(ProductType type)
         {
-            var products = await _dbContext.Products
-                .Where(p => EF.Property<ProductType>(p, "ProductType") == type)
+            var list = await _dbContext.Products.Where(p => p.ProductType == type)
+                .AsNoTracking()
                 .ToListAsync();
 
-            return Result<IEnumerable<Product>>.Success(products);
+            if (list.Count == 0)
+                return Result<IEnumerable<Product>>.Failure(Error.NotFound);
+
+            return Result<IEnumerable<Product>>.Success(list);
         }
-        /// <summary>
-        /// Retrieves products matching the specified filter criteria.
-        /// </summary>
-        /// <param name="filter">The filter criteria to apply.</param>
-        /// <returns>A <see cref="Result{IEnumerable{Product}}"/> containing the filtered products.</returns>
+
+        // -------- Refactored Flexible Filter ----------
         public async Task<Result<IEnumerable<Product>>> GetProductsByFilterAsync(ProductFilter filter)
         {
-            var query = _dbContext.Products.AsQueryable();
+            if (filter is null)
+                return Result<IEnumerable<Product>>.Failure(Error.InvalidInput);
 
+            IQueryable<Product> query = _dbContext.Products.AsNoTracking();
+
+            // 1. Discriminator (if explicitly provided)
             if (filter.ProductType.HasValue)
-                query = query.Where(p => EF.Property<ProductType>(p, "ProductType") == filter.ProductType.Value);
+                query = query.Where(p => p.ProductType == filter.ProductType.Value);
 
-            if (filter.PizzaType.HasValue && filter.ProductType.HasValue && filter.ProductType.Value == ProductType.Pizza )
-                query = query.OfType<Pizza>()
-                    .Where(p => p.PizzaType == filter.PizzaType.Value);
+            // 2. Subtype-specific filters (applied even if ProductType not explicitly set)
+            if (filter.PizzaType.HasValue)
+            {
+                query = query.Where(p => p.ProductType == ProductType.Pizza)
+                             .OfType<Pizza>()
+                             .Where(pz => pz.PizzaType == filter.PizzaType.Value);
+            }
+            else if (filter.BreadType.HasValue)
+            {
+                query = query.Where(p => p.ProductType == ProductType.Bread)
+                             .OfType<Bread>()
+                             .Where(b => b.BreadType == filter.BreadType.Value);
+            }
+            else if (filter.CakeType.HasValue)
+            {
+                query = query.Where(p => p.ProductType == ProductType.Cake)
+                             .OfType<Cake>()
+                             .Where(c => c.CakeType == filter.CakeType.Value);
+            }
+            else if (filter.PastryType.HasValue)
+            {
+                query = query.Where(p => p.ProductType == ProductType.Pastrie)
+                             .OfType<Pastrie>()
+                             .Where(ps => ps.PastryType == filter.PastryType.Value);
+            }
 
-            if (filter.BreadType.HasValue && filter.ProductType.HasValue && filter.ProductType.Value == ProductType.Bread )
-                query = query.OfType<Bread>()
-                    .Where(p => p.BreadType == filter.BreadType.Value);
-
-            if (filter.CakeType.HasValue && filter.ProductType.HasValue && filter.ProductType.Value == ProductType.Cake )
-                query = query.OfType<Cake>()
-                    .Where(p => p.CakeType == filter.CakeType.Value);
-
-            if (filter.PastryType.HasValue && filter.ProductType.HasValue && filter.ProductType.Value == ProductType.Pastrie )
-                query = query.OfType<Pastrie>()
-                    .Where(p => p.PastryType == filter.PastryType.Value);
-
+            // 3. Market filtering
             if (filter.MarketId.HasValue)
                 query = query.Where(p => p.Market.Id == filter.MarketId.Value);
 
-            if (filter.MinPrice.HasValue)
-                query = query.Where(p => EF.Property<decimal>(p, "Price") >= filter.MinPrice.Value);
+            if (!string.IsNullOrWhiteSpace(filter.NameMarket))
+                query = query.Where(p => p.Market.Name == filter.NameMarket);
 
-            if (filter.MaxPrice.HasValue)
-                query = query.Where(p => EF.Property<decimal>(p, "Price") <= filter.MaxPrice.Value);
+            // 4. Availability (if you later add such a flag to Product or a join table)
+            if (filter.IsAvailable.HasValue)
+            {
+                // Placeholder: adapt when availability is modeled
+                query = query.Where(p => p.IsAvailable == filter.IsAvailable.Value);
+            }
 
+            // 5. Text search (Name + Description)
             if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
-                query = query.Where(p => EF.Property<string>(p, "Name").Contains(filter.SearchTerm));
+            {
+                var term = $"%{filter.SearchTerm.Trim()}%";
+                query = query.Where(p =>
+                    EF.Functions.Like(p.Name, term) ||
+                    (p.Description != null && EF.Functions.Like(p.Description, term))
+                );
+            }
 
-            // Aggiungi altri filtri se necessario
+            // 6. (Optional) ordering default
+            query = query.OrderBy(p => p.Name).ThenBy(p => p.Id);
 
             var products = await query.ToListAsync();
+
+            if (products.Count == 0)
+                return Result<IEnumerable<Product>>.Failure(Error.NotFound);
+
             return Result<IEnumerable<Product>>.Success(products);
         }
     }

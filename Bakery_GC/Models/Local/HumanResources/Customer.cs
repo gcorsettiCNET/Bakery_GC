@@ -5,6 +5,6 @@ namespace Bakery_GC.Models.Local.HumanResources
 {
     public class Customer : Person
     {
-        public Market Market { get; set; }
+        public required Market Market { get; set; }
     }
 }

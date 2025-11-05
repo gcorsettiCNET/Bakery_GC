@@ -1,38 +1,67 @@
-using Microsoft.EntityFrameworkCore; 
-using Bakery_GC.Models.Local;
+using Bakery.Infrastructure.Extensions;
+using Bakery.Application.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.  
+// ======= PRESENTATION LAYER SERVICES =======
 builder.Services.AddControllersWithViews();
 builder.Services.AddRazorPages();
 
-// Configure the application to use a local MSSQL instance
-builder.Services.AddDbContext<ApplicationDBContext_Local>(options =>
-   options.UseSqlServer(builder.Configuration.GetConnectionString("BakeryContext")));
+// ======= APPLICATION LAYER =======
+builder.Services.AddApplicationLayer();
+
+// ======= INFRASTRUCTURE LAYER =======
+builder.Services.AddInfrastructure(builder.Configuration);
+
+// ======= LOGGING =======
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
+builder.Logging.AddDebug();
+
+// Set logging levels
+if (builder.Environment.IsDevelopment())
+{
+    builder.Logging.SetMinimumLevel(LogLevel.Debug);
+}
+else
+{
+    builder.Logging.SetMinimumLevel(LogLevel.Information);
+}
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.  
+// ======= DATABASE INITIALIZATION =======
+// Initialize database with migrations and seed data
+await app.Services.InitializeDatabaseAsync();
+
+// ======= HTTP PIPELINE CONFIGURATION =======
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.  
     app.UseHsts();
 }
+else
+{
+    app.UseDeveloperExceptionPage();
+}
+
 app.UseHttpsRedirection();
 app.UseRouting();
-
 app.UseAuthorization();
-
 app.MapStaticAssets();
 
+// ======= ROUTING =======
 app.MapControllerRoute(
-  name: "default",
-  pattern: "{controller=Home}/{action=Index}/{id?}")
-  .WithStaticAssets();
+    name: "default",
+    pattern: "{controller=Home}/{action=Index}/{id?}")
+    .WithStaticAssets();
 
-// Mappa le Razor Pages
 app.MapRazorPages();
+
+// ======= APPLICATION STARTUP =======
+var logger = app.Services.GetRequiredService<ILogger<Program>>();
+logger.LogInformation("🚀 Bakery application started successfully!");
+logger.LogInformation("🏗️ Clean Architecture implemented with Repository Pattern + Unit of Work");
+logger.LogInformation("📊 Database initialized with seed data");
 
 app.Run();
