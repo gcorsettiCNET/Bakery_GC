@@ -14,6 +14,10 @@ public class ProductDto
     public string Category { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
     
+    // Market reference
+    public Guid? MarketId { get; set; }
+    public string? MarketName { get; set; }
+    
     // Properties specifiche per tipo di prodotto
     public string? Ingredients { get; set; }      // Pizza, general products
     public string? Size { get; set; }            // Pizza, Cake

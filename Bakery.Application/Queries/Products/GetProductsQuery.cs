@@ -20,4 +20,3 @@ public class GetProductsQuery : IRequest<Result<PagedList<ProductDto>>>
     public ProductSortBy SortBy { get; set; } = ProductSortBy.Name;
     public SortDirection SortDirection { get; set; } = SortDirection.Ascending;
 }
-

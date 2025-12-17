@@ -56,15 +56,19 @@ public class DatabaseConfiguration
     /// </summary>
     public static DatabaseConfiguration FromEnvironment(string environment, string? connectionString = null)
     {
+        // Se la connection string contiene "Data Source=" con un file .db, usa SQLite
+        var useSqlite = !string.IsNullOrEmpty(connectionString) && 
+                        connectionString.Contains(".db", StringComparison.OrdinalIgnoreCase);
+        
         return environment.ToLowerInvariant() switch
         {
             "development" => new DatabaseConfiguration
             {
-                Provider = string.IsNullOrEmpty(connectionString) ? DatabaseProvider.Sqlite : DatabaseProvider.SqlServer,
-                ConnectionString = connectionString ?? "Data Source=bakery-dev.db",
+                Provider = DatabaseProvider.Sqlite,  // Always SQLite for development
+                ConnectionString = "Data Source=bakery-dev.db",
                 EnableSensitiveDataLogging = true,
                 EnableDetailedErrors = true,
-                AutoMigrateOnStartup = true,
+                AutoMigrateOnStartup = false,  // No migrations for SQLite, use EnsureCreated
                 SeedDataOnStartup = true,
                 SqliteFilePath = "bakery-dev.db"
             },

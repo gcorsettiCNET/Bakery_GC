@@ -7,7 +7,7 @@ namespace Bakery.Application.Extensions;
 
 /// <summary>
 /// Extension methods per configurare il layer Application
-/// Configura MediatR, Behaviors e altre dipendenze dell'Application layer
+/// Configura MediatR, AutoMapper, Behaviors e altre dipendenze dell'Application layer
 /// </summary>
 public static class ServiceCollectionExtensions
 {
@@ -18,6 +18,9 @@ public static class ServiceCollectionExtensions
     /// <returns>Service collection per method chaining</returns>
     public static IServiceCollection AddApplicationLayer(this IServiceCollection services)
     {
+        // Registra AutoMapper con assembly scanning
+        services.AddAutoMapper(Assembly.GetExecutingAssembly());
+        
         // Registra MediatR con assembly scanning
         services.AddMediatR(cfg =>
         {

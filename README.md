@@ -1,9 +1,13 @@
 # 🍞 Bakery Management System
 
 [![.NET](https://img.shields.io/badge/.NET-9.0-purple.svg)](https://dotnet.microsoft.com/download/dotnet/9.0)
+[![.NET Aspire](https://img.shields.io/badge/.NET%20Aspire-9.0-blueviolet.svg)](https://learn.microsoft.com/en-us/dotnet/aspire/)
 [![Entity Framework](https://img.shields.io/badge/Entity%20Framework-9.0-blue.svg)](https://docs.microsoft.com/en-us/ef/)
 [![Clean Architecture](https://img.shields.io/badge/Architecture-Clean-green.svg)](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html)
+[![MediatR](https://img.shields.io/badge/MediatR-CQRS-orange.svg)](https://github.com/jbogard/MediatR)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
+> 🚀 **Da monolite a microservizi orchestrati con .NET Aspire** - Un percorso evolutivo di architettura software
 
 Un sistema di gestione panetteria moderno sviluppato con **Clean Architecture** e **Design Patterns** enterprise-ready. Questo progetto dimostra l'implementazione di un'architettura scalabile e maintainable utilizzando i principi DDD (Domain-Driven Design) e le migliori pratiche di sviluppo .NET.
 
@@ -15,6 +19,60 @@ Questo repository serve come **portfolio dimostrativo** per mostrare:
 - **Best Practices** per progetti enterprise-scale
 - **Structured Logging** e gestione errori professionale
 - **Testability** e **Maintainability** del codice
+
+## 📈 **Evoluzione del Progetto**
+
+Questo progetto rappresenta un percorso evolutivo da applicazione monolitica a architettura distribuita:
+
+```
+┌────────────────────────────────────────────────────────────────────────────┐
+│                        PERCORSO EVOLUTIVO                                  │
+├────────────────────────────────────────────────────────────────────────────┤
+│                                                                            │
+│  📅 FASE 1: Monolite Web                                                   │
+│  ┌─────────────────────┐                                                   │
+│  │   Bakery_GC         │  • Razor Pages                                    │
+│  │   (Monolite)        │  • Entity Framework                               │
+│  │                     │  • Controllers + Views + Data                     │
+│  └─────────────────────┘                                                   │
+│           │                                                                │
+│           ▼                                                                │
+│  📅 FASE 2: Clean Architecture                                             │
+│  ┌─────────────────────────────────────────────────────┐                   │
+│  │  Core  │  Application  │  Infrastructure  │  Web   │                   │
+│  │        │               │                  │        │                   │
+│  │ Domain │    CQRS +     │   Repositories   │ Razor  │                   │
+│  │Entities│   MediatR     │   + DbContext    │ Pages  │                   │
+│  └─────────────────────────────────────────────────────┘                   │
+│           │                                                                │
+│           ▼                                                                │
+│  📅 FASE 3: Microservizi + .NET Aspire                                     │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │                     Bakery.AppHost                                   │   │
+│  │              (Aspire Orchestrator)                                   │   │
+│  │  ┌──────────────────┐          ┌──────────────────┐                 │   │
+│  │  │ Bakery.OrderSvc  │◄────────►│    Bakery_GC     │                 │   │
+│  │  │  (Orders API)    │          │    (Web App)     │                 │   │
+│  │  └──────────────────┘          └──────────────────┘                 │   │
+│  │           ▲                              ▲                           │   │
+│  │           └────────────┬─────────────────┘                           │   │
+│  │                        │                                             │   │
+│  │              ┌─────────┴──────────┐                                  │   │
+│  │              │ ServiceDefaults    │                                  │   │
+│  │              │ (Shared Configs)   │                                  │   │
+│  │              └────────────────────┘                                  │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                            │
+└────────────────────────────────────────────────────────────────────────────┘
+```
+
+### **Motivazioni dell'Evoluzione**
+
+| Fase | Problema Risolto | Pattern/Tecnologia Adottata |
+|------|------------------|----------------------------|
+| **1 → 2** | Codice accoppiato, difficile da testare | Clean Architecture, CQRS, Repository |
+| **2 → 3** | Scalabilità indipendente, team paralleli | Microservizi, .NET Aspire |
+| **2 → 3** | Debugging distribuito complesso | OpenTelemetry, Aspire Dashboard |
 
 ## 🏗️ **Architettura**
 
@@ -59,19 +117,70 @@ Il progetto segue i principi di Clean Architecture con separazione netta delle r
 | Pattern | Descrizione | Benefici |
 |---------|-------------|----------|
 | **🏛️ Clean Architecture** | Separazione layer con dependency inversion | Testabilità, Maintainability, Flessibilità |
+| **📨 CQRS + MediatR** | Separazione read/write con handler isolati | Scalabilità, Single Responsibility |
 | **🗃️ Repository Pattern** | Astrazione data access con interfacce | Database agnostic, Testabilità |
 | **🔄 Unit of Work** | Coordinamento transazioni multiple | Consistenza ACID, Performance |
 | **🎯 Result Pattern** | Gestione errori senza eccezioni | Error handling esplicito, Performance |
 | **📦 Dependency Injection** | IoC container per loose coupling | Testabilità, Flessibilità |
 | **🏗️ Rich Domain Models** | Business logic nelle entities | Encapsulation, Reusability |
 
+### **Struttura della Solution**
+
+```
+📁 Bakery_GC.sln
+│
+├── 🎛️ Bakery.AppHost/              ← .NET Aspire Orchestrator
+│   ├── Program.cs                   # Definizione servizi e dipendenze
+│   └── appsettings.json
+│
+├── 📦 Bakery.ServiceDefaults/       ← Shared Aspire Configurations
+│   └── Extensions.cs                # OpenTelemetry, Health Checks, Resilience
+│
+├── 🔵 Bakery.Core/                  ← Domain Layer (ZERO dipendenze)
+│   ├── Entities/                    # Product, Customer, Market, Order
+│   ├── Interfaces/                  # IRepository<T>, IUnitOfWork
+│   └── Common/                      # Result<T>, Enums, Constants
+│
+├── 🟢 Bakery.Application/           ← Application Layer
+│   ├── Commands/                    # CreateProductCommand, etc.
+│   ├── Queries/                     # GetAllProductsQuery, etc.
+│   ├── Handlers/                    # MediatR Handlers
+│   ├── DTOs/                        # Data Transfer Objects
+│   ├── Mappings/                    # AutoMapper Profiles
+│   └── Behaviors/                   # Pipeline Behaviors (Logging, Validation)
+│
+├── 🟠 Bakery.Infrastructure/        ← Infrastructure Layer
+│   ├── Data/                        # ApplicationDbContext
+│   ├── Repositories/                # GenericRepository, ProductRepository
+│   ├── Configuration/               # DatabaseConfiguration
+│   └── Extensions/                  # ServiceCollectionExtensions
+│
+├── 🌐 Bakery_GC/                    ← Web Application (Presentation)
+│   ├── Controllers/                 # API Controllers, TestController
+│   ├── Pages/                       # Razor Pages
+│   ├── wwwroot/                     # Static files
+│   └── Program.cs                   # DI Configuration, Middleware
+│
+└── 📦 Bakery.OrderService/          ← Orders Microservice (API)
+    ├── Controllers/                 # OrdersController
+    └── Program.cs                   # Minimal API setup con Scalar
+```
+
 ## 🚀 **Getting Started**
 
 ### **Prerequisiti**
 
 - [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0)
+- [.NET Aspire workload](https://learn.microsoft.com/en-us/dotnet/aspire/get-started/install-aspire) (per orchestrazione)
 - [Visual Studio 2022](https://visualstudio.microsoft.com/) o [VS Code](https://code.visualstudio.com/)
-- [SQL Server LocalDB](https://docs.microsoft.com/en-us/sql/database-engine/configure-windows/sql-server-express-localdb) (opzionale - usa InMemory per default)
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (opzionale, per container)
+
+### **Installazione Aspire Workload**
+
+```bash
+dotnet workload update
+dotnet workload install aspire
+```
 
 ### **Setup del Progetto**
 
@@ -91,10 +200,28 @@ dotnet restore
 dotnet build
 ```
 
-4. **Esecuzione dell'applicazione:**
+### **Modalità di Esecuzione**
+
+#### **🎛️ Opzione 1: .NET Aspire (Raccomandato)**
+Avvia tutti i servizi orchestrati con dashboard Aspire:
+```bash
+dotnet run --project Bakery.AppHost
+```
+Apri il browser su `https://localhost:17225` per la **Aspire Dashboard**.
+
+#### **🌐 Opzione 2: Solo Web Application**
+Esegui solo l'applicazione web standalone:
 ```bash
 dotnet run --project Bakery_GC
 ```
+L'applicazione si avvierà su `http://localhost:5019`.
+
+#### **📦 Opzione 3: Solo Order Service API**
+Esegui solo il microservice ordini:
+```bash
+dotnet run --project Bakery.OrderService
+```
+API disponibile con Scalar UI su `/scalar/v1`.
 
 L'applicazione si avvierà su `https://localhost:5019` (o porta simile).
 
@@ -155,6 +282,71 @@ Il progetto include endpoint di test per dimostrare i pattern implementati:
 }
 ```
 
+## 🔮 **.NET Aspire Integration**
+
+Il progetto utilizza **.NET Aspire** per l'orchestrazione dei servizi distribuiti:
+
+### **Architettura Aspire**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Bakery.AppHost                           │
+│              (Aspire Orchestrator)                          │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  ┌─────────────────────┐    ┌─────────────────────┐        │
+│  │  Bakery.OrderService │    │      Bakery_GC      │        │
+│  │    (API Service)     │◄───│    (Web Frontend)   │        │
+│  │                      │    │                     │        │
+│  │  • /api/orders       │    │  • Razor Pages      │        │
+│  │  • Scalar Docs       │    │  • MediatR Handlers │        │
+│  └─────────────────────┘    └─────────────────────┘        │
+│           ▲                           ▲                     │
+│           │                           │                     │
+│  ┌────────┴───────────────────────────┴────────┐           │
+│  │          Bakery.ServiceDefaults              │           │
+│  │  • OpenTelemetry Tracing & Metrics          │           │
+│  │  • Health Checks                             │           │
+│  │  • Service Discovery                         │           │
+│  │  • Resilience (Retry, Circuit Breaker)      │           │
+│  └──────────────────────────────────────────────┘           │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### **Esecuzione con Aspire**
+
+```bash
+# Avvia l'intera soluzione orchestrata
+dotnet run --project Bakery.AppHost
+
+# Aspire Dashboard disponibile per:
+# • Visualizzazione dei servizi
+# • Distributed tracing
+# • Logs centralizzati
+# • Metriche in tempo reale
+```
+
+### **Componenti Aspire**
+
+| Progetto | Ruolo | Funzionalità |
+|----------|-------|--------------|
+| `Bakery.AppHost` | Orchestrator | Coordina tutti i servizi, gestisce dipendenze |
+| `Bakery.OrderService` | API | Gestione ordini, documentazione Scalar |
+| `Bakery.ServiceDefaults` | Shared Config | OpenTelemetry, Health Checks, Resilience |
+| `Bakery_GC` | Web App | Frontend con Razor Pages, consuma OrderService |
+
+### **Comunicazione tra Servizi**
+
+```csharp
+// AppHost - Orchestrazione
+var orderApi = builder.AddProject<Projects.Bakery_OrderService>("orderservice");
+var webApp = builder.AddProject<Projects.Bakery_GC>("webapp")
+    .WithReference(orderApi);  // Dependency injection automatica
+
+// WebApp può chiamare OrderService tramite Service Discovery
+// http://orderservice/api/orders (risolto automaticamente)
+```
+
 ## 📊 **Struttura del Database**
 
 ### **Domain Entities**
@@ -191,25 +383,69 @@ var isFresh = bread.IsFresh(); // Verifica freschezza basata su shelf life
 
 ### **Core Framework**
 - **.NET 9** - Latest framework Microsoft
-- **ASP.NET Core** - Web framework
+- **ASP.NET Core** - Web framework per Razor Pages e API
 - **Entity Framework Core 9** - ORM con Code-First approach
 
+### **.NET Aspire**
+- **AppHost** - Orchestrazione dei servizi distribuiti
+- **ServiceDefaults** - Configurazione condivisa (OpenTelemetry, Health Checks)
+- **Service Discovery** - Risoluzione automatica degli endpoint
+- **Resilience** - Retry policies e circuit breaker integrati
+
 ### **Design Patterns & Architecture**
-- **MediatR** - CQRS implementation (in development)
-- **FluentValidation** - Validation pipeline
-- **AutoMapper** - Object-to-object mapping (planned)
+- **MediatR** - CQRS pattern per separazione Commands/Queries
+- **AutoMapper** - Object-to-object mapping
+- **Result Pattern** - Error handling esplicito senza eccezioni
 
 ### **Database & Storage**
+- **SQLite** - Development database (zero setup)
 - **SQL Server** - Production database
-- **InMemory Database** - Development/Testing
+- **InMemory Database** - Testing
 - **Entity Framework Migrations** - Schema management
 
-### **Testing & Quality**
+### **Observability & Quality**
+- **OpenTelemetry** - Distributed tracing e metriche
+- **Health Checks** - Monitoraggio stato servizi
 - **Structured Logging** - Microsoft.Extensions.Logging
-- **Result Pattern** - Custom implementation per error handling
-- **Dependency Injection** - Microsoft.Extensions.DependencyInjection
+- **Aspire Dashboard** - Visualizzazione centralizzata
 
 ## 📖 **Esempi di Codice**
+
+### **CQRS con MediatR**
+
+```csharp
+// Query per ottenere prodotti (Read operation)
+public class GetAllProductsQuery : IRequest<Result<IEnumerable<ProductDto>>> { }
+
+// Handler separato per la query
+public class GetAllProductsQueryHandler : IRequestHandler<GetAllProductsQuery, Result<IEnumerable<ProductDto>>>
+{
+    private readonly IProductRepository _productRepository;
+    private readonly IMapper _mapper;
+
+    public async Task<Result<IEnumerable<ProductDto>>> Handle(GetAllProductsQuery request, CancellationToken ct)
+    {
+        var result = await _productRepository.GetAllAsync();
+        if (!result.IsSuccess) return Result<IEnumerable<ProductDto>>.Failure(result.Error);
+        
+        return Result<IEnumerable<ProductDto>>.Success(_mapper.Map<IEnumerable<ProductDto>>(result.Value));
+    }
+}
+
+// Controller pulito che usa MediatR
+[ApiController]
+public class TestController : ControllerBase
+{
+    private readonly IMediator _mediator;
+
+    [HttpGet("products")]
+    public async Task<IActionResult> GetProducts()
+    {
+        var result = await _mediator.Send(new GetAllProductsQuery());
+        return result.IsSuccess ? Ok(result.Value) : BadRequest(result.Error);
+    }
+}
+```
 
 ### **Repository Pattern Usage**
 
@@ -320,29 +556,32 @@ public async Task ProductController_GetProduct_ShouldReturnProduct()
 ## 🚧 **Roadmap**
 
 ### **✅ Completato**
-- [x] Clean Architecture setup
+- [x] Clean Architecture setup con 4 layer
 - [x] Repository Pattern + Unit of Work
 - [x] Result Pattern per error handling
-- [x] Domain Entities con business logic
-- [x] Structured logging
-- [x] Dependency Injection setup
-- [x] InMemory database per testing
-- [x] Seed data automatico
+- [x] CQRS con MediatR (Commands/Queries/Handlers)
+- [x] AutoMapper per DTOs mapping
+- [x] Domain Entities con business logic (Product, Customer, Market)
+- [x] Structured logging con Pipeline Behaviors
+- [x] Multi-database support (SQLite, SQL Server, InMemory)
+- [x] Seed data automatico con dati realistici italiani
+- [x] .NET Aspire integration
+- [x] OrderService microservice (API separata)
+- [x] OpenTelemetry per distributed tracing
+- [x] Health Checks e Resilience patterns
 
 ### **🔄 In Sviluppo**
-- [ ] **CQRS con MediatR** - Separazione Commands/Queries
 - [ ] **FluentValidation** - Pipeline di validazione
-- [ ] **AutoMapper** - DTOs mapping
-- [ ] **Authentication & Authorization**
+- [ ] **Authentication & Authorization** - JWT/Identity
+- [ ] **Order domain completo** - Entità e logica ordini
 
 ### **📋 Pianificato**
-- [ ] **Serilog** per advanced logging
-- [ ] **Unit Tests** completi
-- [ ] **Integration Tests**
-- [ ] **Docker** containerization
-- [ ] **Azure** deployment
-- [ ] **Swagger/OpenAPI** documentation
-- [ ] **Performance monitoring**
+- [ ] **Unit Tests** completi con xUnit
+- [ ] **Integration Tests** con TestContainers
+- [ ] **Docker Compose** per deployment locale
+- [ ] **Azure Container Apps** deployment
+- [ ] **API Gateway** con YARP
+- [ ] **Event-Driven Architecture** con message broker
 
 ## 🤝 **Contributing**
 
@@ -367,16 +606,19 @@ Questo progetto è rilasciato sotto licenza MIT. Vedi `LICENSE` file per dettagl
 ## 🙏 **Riconoscimenti**
 
 - **Robert C. Martin** per Clean Architecture
-- **Microsoft** per .NET ecosystem
+- **Microsoft** per .NET Aspire e l'ecosistema .NET 9
+- **Jimmy Bogard** per MediatR
 - **Community .NET** per best practices e patterns
 
 ---
 
-> 💡 **Nota per Recruiters/Tech Leaders**: Questo progetto dimostra competenze in architetture enterprise, design patterns, e best practices per progetti scalabili. È stato sviluppato come showcase di skills tecniche avanzate in ambiente .NET.
+> 💡 **Nota per Recruiters/Tech Leaders**: Questo progetto dimostra l'evoluzione da un'applicazione web monolitica a un'architettura distribuita orchestrata con .NET Aspire. Showcase di competenze in Clean Architecture, CQRS, microservizi e observability per progetti enterprise-scale.
 
 ## 📚 **Risorse Aggiuntive**
 
 - [Clean Architecture - Uncle Bob](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html)
+- [.NET Aspire Documentation](https://learn.microsoft.com/en-us/dotnet/aspire/)
+- [MediatR Wiki](https://github.com/jbogard/MediatR/wiki)
 - [.NET Application Architecture Guides](https://docs.microsoft.com/en-us/dotnet/architecture/)
 - [Entity Framework Core Documentation](https://docs.microsoft.com/en-us/ef/core/)
 - [ASP.NET Core Best Practices](https://docs.microsoft.com/en-us/aspnet/core/fundamentals/best-practices)
